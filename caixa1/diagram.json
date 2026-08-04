@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "author": "Rodrigo Guikang Liu",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "board-esp32-c3-devkitm-1",
+      "id": "esp-caixa-01",
+      "top": 0,
+      "left": 0,
+      "attrs": { "env": "caixa1" }
+    },
+    {
+      "type": "board-ili9341-cap-touch",
+      "id": "lcd1",
+      "top": -39.68,
+      "left": 292.74,
+      "rotate": 90,
+      "attrs": {}
+    }
+  ],
+  "connections": [
+    
+    [ "esp-caixa-01:GND.1", "lcd1:GND", "black", [ "h-51.78", "v-67.5", "h245.26" ] ],
+    [ "esp-caixa-01:3", "lcd1:RST", "#8f4814", [ "h-42.18", "v-86.7", "h220.8", "v115.2" ] ],
+    [ "esp-caixa-01:10", "lcd1:D/C", "green", [ "h-90.18", "v-192.3", "h249.6", "v172.8" ] ],
+    [ "esp-caixa-01:7", "lcd1:CS", "orange", [ "v-0.3", "h52.54", "v-9.6" ] ],
+    [ "esp-caixa-01:6", "lcd1:MOSI", "blue", [ "h33.34", "v9.3" ] ],
+    [ "esp-caixa-01:4", "lcd1:SCK", "violet", [ "v-0.3", "h148.54" ] ],
+    [ "esp-caixa-01:5", "lcd1:MISO", "gray", [ "h23.74", "v28.5" ] ],
+    [ "esp-caixa-01:9", "lcd1:SCL", "purple", [ "h62.14", "v86.1" ] ],
+    [ "esp-caixa-01:8", "lcd1:SDA", "cyan", [ "h42.94", "v86.1", "h48" ] ],
+    [ "esp-caixa-01:3V3", "lcd1:VCC", "red", [ "h-32.58", "v-48.3", "h249.6", "v76.8" ] ],
+    [ "lcd1:LED", "esp-caixa-01:3V3", "red", [ "h-19.2", "v-144", "h-249.6", "v48.3" ] ]
+  ],
+  "dependencies": {}
+}

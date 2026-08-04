@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "author": "Rodrigo Guikang Liu",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "board-esp32-c3-devkitm-1",
+      "id": "esp-cerebro",
+      "top": 0,
+      "left": 0,
+      "attrs": { "env": "cerebro" }
+    },
+    {
+      "type": "wokwi-neopixel-matrix",
+      "id": "fita-led",
+      "top": -80,
+      "left": -50,
+      "attrs": { "rows": "1", "cols": "8" }
+    }
+  ],
+  "connections": [
+    [ "esp-cerebro:3V3", "fita-led:VCC", "red", [ "v-20", "h-20" ] ],
+    [ "esp-cerebro:GND.1", "fita-led:GND", "black", [ "v-30", "h-30" ] ],
+    [ "esp-cerebro:8", "fita-led:DIN", "green", [ "v-40", "h-40" ] ]
+  ]
+}
