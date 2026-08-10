@@ -2,17 +2,16 @@ import xmlrpc.client
 import json
 import paho.mqtt.client as mqtt
 
-# ==========================================
-# 1. CREDENCIAIS DO ODOO (Preencha as suas)
-# ==========================================
+# 1. CREDENCIAIS DO ODOO (preencha os seus dados)
+
 URL = "https://tg-storage-management.odoo.com"
 DB = "tg-storage-management"
 USER = "teste@gmail.com"
 PASSWORD = "MINHA_SENHA_AQUI"
 
-# ==========================================
+
 # 2. CONFIGURAÇÕES MQTT & MAPEAMENTO FISICO
-# ==========================================
+
 MQTT_BROKER = "broker.hivemq.com"
 MQTT_PORT = 1883
 TOPICO_RX_PYTHON = "tg/rodrigo/odoo/tx"
@@ -106,9 +105,7 @@ def on_message(client, userdata, msg):
                     id_pedido = moves[0]['picking_id'][0]
                     ids_dos_pedidos.add(id_pedido)
                     
-                    # =========================================================================
-                    # FORÇA BRUTA: Atualiza a quantidade para TODOS (Concluído, Pendente, Erro)
-                    # =========================================================================
+                    
                     try:
                         models.execute_kw(DB, uid, PASSWORD, 'stock.move', 'write', [[id_move], {'quantity': qtd}])
                     except: pass
@@ -119,9 +116,7 @@ def on_message(client, userdata, msg):
                     
                     print(f" -> {codigo}: Quantidade {qtd} salva no banco! (Status ESP32: {status})")
             
-            # =========================================================================
-            # MENSAGEM BOA (Mantida): Usa mail.message para formatar visualmente limpo
-            # =========================================================================
+            
             for pedido_id in ids_dos_pedidos:
                 try:
                     models.execute_kw(DB, uid, PASSWORD, 'mail.message', 'create', [{

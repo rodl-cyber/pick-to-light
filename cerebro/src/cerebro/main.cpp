@@ -175,11 +175,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
         CRGB corStatus = (acao == "Concluido") ? CRGB::Green : CRGB::Red;
         atualizarLeds(listaPedidos[indiceAtual].caixa_alvo, corStatus);
         
-        // ==============================================================
-        // CORREÇÃO: "Fast-Track" para o último produto!
-        // Se for o último produto (erro ou concluído), ignora o delay 
-        // de 1 segundo e manda a tela final instantaneamente!
-        // ==============================================================
+      
         if (indiceAtual < totalProdutos - 1) {
             tempoCorFinal = millis();
             estadoAtual = MOSTRANDO_COR; 

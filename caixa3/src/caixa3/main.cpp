@@ -8,9 +8,7 @@
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 
-// ==========================================
 int MINHA_CAIXA = 3; 
-// ==========================================
 
 #define TFT_CS   7
 #define TFT_DC   10
@@ -100,7 +98,6 @@ void callback(char* topic, byte* payload, unsigned int length) {
       if (comando == "PRODUTO") {
         String novoCodigo = doc["codigo"].as<String>();
         
-        // CORREÇÃO: A caixa só recusa o comando do Cérebro se ELA JÁ ESTIVER com a tela ativamente aberta operando o produto!
         bool telaAtiva = (estadoAtual == TELA_INICIAL || estadoAtual == TELA_ESTOQUE || estadoAtual == TELA_STATUS || estadoAtual == TELA_ERRO_MOTIVO || estadoAtual == TELA_ESPERA_CONFIRMACAO || estadoAtual == TELA_ESPERA_PROXIMO || estadoAtual == TELA_ESPERA_ANTERIOR);
         
         if (meusDados.codigo == novoCodigo && telaAtiva) {
@@ -108,7 +105,6 @@ void callback(char* topic, byte* payload, unsigned int length) {
           return; 
         }
         
-        // Se ela estava na TELA_FINAL ou AGUARDANDO, ela aceita o produto e limpa a tela!
         meusDados.indice = doc["indice"].as<int>();
         meusDados.indice_max = doc["indice_max"].as<int>(); 
         meusDados.codigo = novoCodigo;
