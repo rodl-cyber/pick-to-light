@@ -48,7 +48,3 @@ Tanto no código do Cérebro quanto no das Caixas, certifique-se de configurar:
 
 Faça o upload (`Push`) dos códigos para as respectivas placas.
 
----
-
-### ⚠️ Aviso de Segurança
-Nunca faça commits contendo senhas reais do seu ERP ou do seu banco de dados em repositórios públicos. Utilize variáveis de ambiente ou substitua sua senha por texto genérico (ex: `"MINHA_SENHA"`) antes de salvar alterações no Git.
