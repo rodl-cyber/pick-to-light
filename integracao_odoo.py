@@ -2,16 +2,17 @@ import xmlrpc.client
 import json
 import paho.mqtt.client as mqtt
 
-# 1. CREDENCIAIS DO ODOO (preencha os seus dados)
-
+# ==========================================
+# 1. CREDENCIAIS DO ODOO
+# ==========================================
 URL = "https://tg-storage-management.odoo.com"
 DB = "tg-storage-management"
-USER = "teste@gmail.com"
-PASSWORD = "MINHA_SENHA_AQUI"
+USER = "tgstorage34@gmail.com"
+PASSWORD = "Qwert67890" # Coloque a sua senha real aqui
 
-
-# 2. CONFIGURAÇÕES MQTT & MAPEAMENTO FISICO
-
+# ==========================================
+# 2. CONFIGURAÇÕES MQTT
+# ==========================================
 MQTT_BROKER = "broker.hivemq.com"
 MQTT_PORT = 1883
 TOPICO_RX_PYTHON = "tg/rodrigo/odoo/tx"
@@ -42,19 +43,18 @@ def on_message(client, userdata, msg):
         dados = json.loads(payload)
         comando = dados.get("comando")
         
-        # FLUXO 1: ESP32 PEDE A LISTA
         if comando == "PEDIR_LISTA":
-            print("\n[>] Cérebro solicitou a lista! Buscando o último pedido no Odoo...")
+            print("\n[>] Cérebro solicitou a lista! Buscando o último pedido...")
             pickings = models.execute_kw(DB, uid, PASSWORD, 'stock.picking', 'search_read',
                 [[['state', 'in', ['confirmed', 'assigned']]]],
                 {'fields': ['name'], 'order': 'id desc', 'limit': 1})
             
             if not pickings:
-                print("[!] Nenhuma ordem de separação ativa encontrada no Odoo.")
+                print("[!] Nenhuma ordem ativa encontrada no Odoo.")
                 return
                 
             picking_id = pickings[0]['id']
-            print(f"    [+] Encontrou a Ordem: {pickings[0]['name']}")
+            print(f"    [+] Ordem encontrada: {pickings[0]['name']}")
             
             moves = models.execute_kw(DB, uid, PASSWORD, 'stock.move', 'search_read',
                 [[['picking_id', '=', picking_id]]], {'fields': ['product_id', 'product_uom_qty']})
@@ -73,69 +73,104 @@ def on_message(client, userdata, msg):
                     "qtd_original": int(move['product_uom_qty'])
                 })
             
-            if len(lista_para_esp) > 0:
+            if lista_para_esp:
                 client.publish(TOPICO_TX_PYTHON, json.dumps({"comando": "NOVA_LISTA", "produtos": lista_para_esp}))
-                print(f"[<] Lista oficial enviada para o ESP32!")
+                print(f"[<] Lista enviada para o ESP32!")
 
-        # FLUXO 2: ESP32 DEVOLVE OS DADOS PARA SALVAR NO ODOO
         elif comando == "SALVAR_ODOO":
             produtos = dados.get("produtos", [])
-            print(f"\n[>] Cérebro finalizou! Atualizando TODOS os {len(produtos)} produtos no Odoo...")
+            print(f"\n[>] Cérebro finalizou! Processando {len(produtos)} produtos...")
             
-            ids_dos_pedidos = set()
+            pickings = models.execute_kw(DB, uid, PASSWORD, 'stock.picking', 'search_read',
+                [[['state', 'in', ['confirmed', 'assigned']]]],
+                {'fields': ['name'], 'order': 'id desc', 'limit': 1})
+                
+            if not pickings:
+                print("[!] Nenhum pedido ativo para atualizar.")
+                return
+                
+            picking_id = pickings[0]['id']
+            picking_name = pickings[0]['name']
+            print(f"    [+] Atualizando estritamente o pedido: {picking_name}")
+            
             html_relatorio = "<b>🤖 Relatório de Separação (Pick-to-Light ESP32):</b><br/>"
             
             for item in produtos:
                 codigo = item['codigo']
-                qtd = item['qtd_separada']
+                qtd_recebida_esp = float(item['qtd_separada'])
                 status = item['status']
                 
-                if status == "Concluido": icone = "🟢"
-                elif status == "Pendente": icone = "⚪"
-                else: icone = "🔴"
-                
-                html_relatorio += f"{icone} <b>{codigo}</b>: Separou {qtd} - <i>{status}</i><br/>"
-                
+                # 1. BUSCA O MOVIMENTO E A QUANTIDADE INICIAL DEMANDADA
                 moves = models.execute_kw(DB, uid, PASSWORD, 'stock.move', 'search_read', 
-                    [[['product_id.default_code', '=', codigo], ['state', 'in', ['confirmed', 'assigned']]]],
-                    {'fields': ['picking_id']})
+                    [[['picking_id', '=', picking_id], ['product_id.default_code', '=', codigo]]],
+                    {'fields': ['id', 'product_uom_qty']})
                     
                 if moves:
-                    id_move = moves[0]['id']
-                    id_pedido = moves[0]['picking_id'][0]
-                    ids_dos_pedidos.add(id_pedido)
+                    move_id = moves[0]['id']
+                    qtd_demanda_inicial = float(moves[0]['product_uom_qty'])
                     
+                    # ====================================================================
+                    # 2. REGRAS DE NEGÓCIO DE ESTOQUE E STATUS
+                    # ====================================================================
+                    if status == "Pendente" or status == "Prod Errado":
+                        # Regra 1: Sempre zero.
+                        qtd_final = 0.0
+                        
+                    elif status == "Falta Prod":
+                        # Regra 2: Igual ou menor que o pedido inicial.
+                        if qtd_recebida_esp > qtd_demanda_inicial:
+                            qtd_final = qtd_demanda_inicial # Trava no valor máximo
+                        else:
+                            qtd_final = qtd_recebida_esp
+                            
+                    else: # Se for "Concluido"
+                        qtd_final = qtd_recebida_esp
+                    # ====================================================================
                     
-                    try:
-                        models.execute_kw(DB, uid, PASSWORD, 'stock.move', 'write', [[id_move], {'quantity': qtd}])
-                    except: pass
+                    # Formatação exata do seu código para a mensagem (usando o valor já corrigido)
+                    if status == "Concluido": icone = "🟢"
+                    elif status == "Pendente": icone = "⚪"
+                    else: icone = "🔴"
                     
-                    try:
-                        models.execute_kw(DB, uid, PASSWORD, 'stock.move', 'write', [[id_move], {'quantity_done': qtd}])
-                    except: pass
+                    html_relatorio += f"{icone} <b>{codigo}</b>: Separou {int(qtd_final)} - <i>{status}</i><br/>"
                     
-                    print(f" -> {codigo}: Quantidade {qtd} salva no banco! (Status ESP32: {status})")
+                    # 3. ATUALIZA AS TABELAS COM O VALOR FILTRADO
+                    move_lines = models.execute_kw(DB, uid, PASSWORD, 'stock.move.line', 'search_read',
+                        [[['move_id', '=', move_id]]], {'fields': ['id']})
+                        
+                    if move_lines:
+                        for ml in move_lines:
+                            ml_id = ml['id']
+                            try: models.execute_kw(DB, uid, PASSWORD, 'stock.move.line', 'write', [[ml_id], {'quantity': qtd_final}])
+                            except: pass
+                            try: models.execute_kw(DB, uid, PASSWORD, 'stock.move.line', 'write', [[ml_id], {'qty_done': qtd_final}])
+                            except: pass
+                    else:
+                        try: models.execute_kw(DB, uid, PASSWORD, 'stock.move', 'write', [[move_id], {'quantity': qtd_final}])
+                        except: pass
+                        try: models.execute_kw(DB, uid, PASSWORD, 'stock.move', 'write', [[move_id], {'quantity_done': qtd_final}])
+                        except: pass
+                        
+                    print(f" -> {codigo}: Recebeu {int(qtd_recebida_esp)} | Injetou no Odoo {int(qtd_final)} (Status: {status})")
             
-            
-            for pedido_id in ids_dos_pedidos:
-                try:
-                    models.execute_kw(DB, uid, PASSWORD, 'mail.message', 'create', [{
-                        'model': 'stock.picking',
-                        'res_id': pedido_id,
-                        'body': html_relatorio,
-                        'message_type': 'comment',
-                        'subtype_id': 2 # ID padrão para Log Note no Odoo
-                    }])
-                    print(f"    [✓] Relatório visual anexado ao Odoo com sucesso!")
-                except Exception as ex:
-                    print(f"    [!] Erro ao tentar postar a nota: {ex}")
-                    
+            # ==== POSTA A MENSAGEM NO CHATTER ====
+            try:
+                models.execute_kw(DB, uid, PASSWORD, 'mail.message', 'create', [{
+                    'model': 'stock.picking',
+                    'res_id': picking_id, 
+                    'body': html_relatorio,
+                    'message_type': 'comment',
+                    'subtype_id': 2 
+                }])
+                print(f"    [✓] Relatório visual anexado ao Odoo com sucesso!")
+            except Exception as ex:
+                print(f"    [!] Erro ao tentar postar a nota: {ex}")
+                
             print("--- SINCRONIZAÇÃO FINALIZADA ---\n")
             
     except Exception as e:
         print(f"Erro interno no Python: {e}")
 
-# Inicia o MQTT e MANTÉM O SCRIPT RODANDO INFINITAMENTE
 client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
 client.on_connect = on_connect
 client.on_message = on_message
