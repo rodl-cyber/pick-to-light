@@ -7,8 +7,8 @@ import paho.mqtt.client as mqtt
 # ==========================================
 URL = "https://tg-storage-management.odoo.com"
 DB = "tg-storage-management"
-USER = "tgstorage34@gmail.com"
-PASSWORD = "Qwert67890" # Coloque a sua senha real aqui
+USER = "teste@gmail.com"
+PASSWORD = "MINHA_SENHA_AQUI" # Coloque a sua senha real aqui
 
 # ==========================================
 # 2. CONFIGURAÇÕES MQTT
