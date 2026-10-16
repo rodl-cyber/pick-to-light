@@ -2,17 +2,13 @@ import xmlrpc.client
 import json
 import paho.mqtt.client as mqtt
 
-# ==========================================
-# 1. CREDENCIAIS DO ODOO
-# ==========================================
+# CREDENCIAIS DO ODOO
 URL = "https://tg-storage-management.odoo.com"
 DB = "tg-storage-management"
 USER = "teste@gmail.com"
 PASSWORD = "MINHA_SENHA_AQUI" # Coloque a sua senha real aqui
 
-# ==========================================
-# 2. CONFIGURAÇÕES MQTT
-# ==========================================
+# CONFIGURAÇÕES MQTT
 MQTT_BROKER = "broker.hivemq.com"
 MQTT_PORT = 1883
 TOPICO_RX_PYTHON = "tg/rodrigo/odoo/tx"
@@ -100,7 +96,7 @@ def on_message(client, userdata, msg):
                 qtd_recebida_esp = float(item['qtd_separada'])
                 status = item['status']
                 
-                # 1. BUSCA O MOVIMENTO E A QUANTIDADE INICIAL DEMANDADA
+                #BUSCA O MOVIMENTO E A QUANTIDADE INICIAL DEMANDADA
                 moves = models.execute_kw(DB, uid, PASSWORD, 'stock.move', 'search_read', 
                     [[['picking_id', '=', picking_id], ['product_id.default_code', '=', codigo]]],
                     {'fields': ['id', 'product_uom_qty']})
@@ -109,15 +105,14 @@ def on_message(client, userdata, msg):
                     move_id = moves[0]['id']
                     qtd_demanda_inicial = float(moves[0]['product_uom_qty'])
                     
-                    # ====================================================================
-                    # 2. REGRAS DE NEGÓCIO DE ESTOQUE E STATUS
-                    # ====================================================================
+                    
+                    # REGRAS DE ESTOQUE E STATUS
                     if status == "Pendente" or status == "Prod Errado":
-                        # Regra 1: Sempre zero.
+                        # Sempre zero.
                         qtd_final = 0.0
                         
                     elif status == "Falta Prod":
-                        # Regra 2: Igual ou menor que o pedido inicial.
+                        # igual ou menor que o pedido inicial
                         if qtd_recebida_esp > qtd_demanda_inicial:
                             qtd_final = qtd_demanda_inicial # Trava no valor máximo
                         else:
@@ -125,16 +120,15 @@ def on_message(client, userdata, msg):
                             
                     else: # Se for "Concluido"
                         qtd_final = qtd_recebida_esp
-                    # ====================================================================
                     
-                    # Formatação exata do seu código para a mensagem (usando o valor já corrigido)
+                    # Formatação para a mensagem do Chatter
                     if status == "Concluido": icone = "🟢"
                     elif status == "Pendente": icone = "⚪"
                     else: icone = "🔴"
                     
                     html_relatorio += f"{icone} <b>{codigo}</b>: Separou {int(qtd_final)} - <i>{status}</i><br/>"
                     
-                    # 3. ATUALIZA AS TABELAS COM O VALOR FILTRADO
+                    # ATUALIZA AS TABELAS COM O VALOR FILTRADO
                     move_lines = models.execute_kw(DB, uid, PASSWORD, 'stock.move.line', 'search_read',
                         [[['move_id', '=', move_id]]], {'fields': ['id']})
                         
@@ -153,7 +147,7 @@ def on_message(client, userdata, msg):
                         
                     print(f" -> {codigo}: Recebeu {int(qtd_recebida_esp)} | Injetou no Odoo {int(qtd_final)} (Status: {status})")
             
-            # ==== POSTA A MENSAGEM NO CHATTER ====
+            # POSTA A MENSAGEM NO CHATTER
             try:
                 models.execute_kw(DB, uid, PASSWORD, 'mail.message', 'create', [{
                     'model': 'stock.picking',
